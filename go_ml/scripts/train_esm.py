@@ -48,15 +48,15 @@ if __name__ == "__main__":
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(hparams.model_name)
     collate_seqs = get_seq_collator(tokenizer, max_length=hparams.max_length, add_special_tokens=True)
-    dataloader_params = {"shuffle": True, "batch_size": 8, "collate_fn":collate_seqs}
-    val_dataloader_params = {"shuffle": False, "batch_size": 24, "collate_fn":collate_seqs}
+    dataloader_params = {"shuffle": True, "batch_size": 4, "collate_fn":collate_seqs}
+    val_dataloader_params = {"shuffle": False, "batch_size": 8, "collate_fn":collate_seqs}
 
     train_loader = DataLoader(train_dataset, **dataloader_params, num_workers=6)
     val_loader = DataLoader(val_dataset, **val_dataloader_params)
 
     hparams.num_classes = train_dataset[0]['labels'].shape[0]
     hparams.num_train_steps = 10*len(train_dataset)
-    hparams.encoder_features = 320
+    # hparams.encoder_features = 320
     model = BERTFinetune(hparams)
     
     early_stop_callback = EarlyStopping(monitor='F1/val', min_delta=0.00, patience=3, verbose=True, mode='max')
@@ -65,6 +65,6 @@ if __name__ == "__main__":
     
     from pytorch_lightning.loggers import TensorBoardLogger
     logger = TensorBoardLogger("logs", name="esm_finetune")
-    trainer = pl.Trainer(devices=[0], max_epochs=10, 
+    trainer = pl.Trainer(devices=[1], max_epochs=10, 
                          callbacks=[early_stop_callback, checkpoint_callback], logger=logger)
     trainer.fit(model, train_loader, val_loader)
