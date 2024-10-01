@@ -33,12 +33,13 @@ from scipy.sparse import csr_array, vstack
 
 import tqdm.notebook
 TQDM_BAR_FORMAT = '{l_bar}{bar}| {n_fmt}/{total_fmt} [elapsed: {elapsed} remaining: {remaining}]'
-with tqdm.tqdm(total=100*1000) as pbar:
+NUM_MUT = 7000
+with tqdm.tqdm(total=100*NUM_MUT) as pbar:
     eval_mut = []
     eval_l = []
     with torch.no_grad():
         for test_prot in enzyme_l[:100]:
-            mut_seq = [mutate_ind(test_prot['seq'], lambda_=45) for _ in range(1000)]
+            mut_seq = [mutate_ind(test_prot['seq'], lambda_=45) for _ in range(NUM_MUT)]
             mut_ds = ProtDataset(['csatest']*len(mut_seq), [x[0] for x in mut_seq])
             collate_seqs = get_seq_collator(tokenizer, max_length=1024, add_special_tokens=True)
             mut_dl = DataLoader(mut_ds, shuffle=False, batch_size=60, collate_fn=collate_seqs)
@@ -51,12 +52,10 @@ with tqdm.tqdm(total=100*1000) as pbar:
                 pbar.update(logit_preds.shape[0])
             logit_preds = torch.cat(logit_l)
             sparse_preds = csr_array(logit_preds.cpu().numpy())
-            eval_mut.extend(mut_seq)
+            eval_mut.append(mut_seq)
             eval_l.append(sparse_preds)
         eval_results = vstack(eval_l)
-
+        
 import pickle
-with open('/home/andrew/GO_interp/go_ml/notebooks/notebook_cache/test_1000_mut_eval.pkl', 'wb') as f:
+with open('/home/andrew/GO_interp/go_ml/notebooks/notebook_cache/test_7000_mut_eval.pkl', 'wb') as f:
     pickle.dump((eval_mut, eval_results), f)
-
-    

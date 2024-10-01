@@ -3,10 +3,34 @@ import torch
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader
 import numpy as np
+import pandas as pd
 import json, pickle
 from go_bench.load_tools import load_protein_sequences
 from go_ml.data_utils import BertSeqDataset, get_seq_collator
 import transformers
+
+def get_enzyme_df(df_url="/home/andrew/GO_interp/data/enzyme_dataset_seq.csv", 
+                  train_path="/home/andrew/cafa5_team/data/"):
+    enzyme_df= pd.read_csv(df_url)
+    enzyme_df= enzyme_df[~enzyme_df['Sequence'].isna()]
+    enzyme_go_terms = [gt.split("'")[1] for gt in enzyme_df['GOTerm']]
+    with open(f"{train_path}/cafa_dataset/go_terms.json", "r") as f:
+        go_terms = json.load(f)
+    term_ind_map = {t:i for i, t in enumerate(go_terms)}
+    enzyme_df['GOTerm'] = enzyme_go_terms
+    enzyme_df= enzyme_df[enzyme_df['GOTerm'].isin(term_ind_map)]
+    enzyme_term_index = [term_ind_map[t] for t in enzyme_df['GOTerm']]
+    enzyme_df['GOTermIndex'] = enzyme_term_index
+    annotated_indices = [list(filter(lambda x: x < min(1024, len(seq)), map(int, x[1:-1].split(',')))) for x, seq in zip(enzyme_df['AnnotatedIndices'], enzyme_df['Sequence'])]
+    enzyme_df['AnnotatedIndices'] = annotated_indices
+    return enzyme_df
+
+def enzyme_iterator(enzyme_df, tokenizer):
+     for i, pid, annot_ind, enzyme_cls, goterm, seq, go_ind in enzyme_df.itertuples():
+          # print(pid, annot_ind, enzyme_cls, goterm, seq, go_ind)
+          inputs = tokenizer.batch_encode_plus([seq], add_special_tokens=True, padding='max_length',
+                                             truncation=True, return_attention_mask=True, max_length=1024)
+          yield {'prot_id': pid, 'annot_ind': annot_ind, 'go_ind': go_ind, 'seq': seq, 'seq_ind': inputs['input_ids'], 'mask': inputs['attention_mask']}
 
 def get_dataloaders(model_name="facebook/esm2_t6_8M_UR50D", max_length=1024):
     train_path = "/home/andrew/cafa5_team/data/"

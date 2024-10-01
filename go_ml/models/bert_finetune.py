@@ -5,7 +5,7 @@ from torch import optim
 from sklearn.metrics import f1_score
 import pytorch_lightning as pl
 
-from transformers import AutoTokenizer, AutoModel, AutoConfig
+from transformers import AutoTokenizer, AutoModel, AutoConfig, BertForSequenceClassification
 from torch.utils.data import DataLoader, Dataset
 from torch.cuda.amp import autocast, GradScaler
 from torch.optim import Adam, AdamW
@@ -49,8 +49,10 @@ class BERTFinetune(pl.LightningModule):
         self.model_name = model_args.model_name
         self.model = AutoModel.from_pretrained(self.model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, do_lower_case=False)
+        self.h.encoder_features = self.model.encoder.config.hidden_size*2
         self.classification_head = nn.Sequential(
-            nn.Linear(self.h.encoder_features, self.h.num_classes),
+            nn.Linear(self.h.encoder_features, self.h.cls_bottleneck),
+            nn.Linear(self.h.cls_bottleneck, self.h.num_classes),
         )
         self.loss = nn.BCEWithLogitsLoss()
 
@@ -77,8 +79,8 @@ class BERTFinetune(pl.LightningModule):
             if pool_mean:
                 output_vectors.append(sum_embeddings / sum_mask)
 
-        output_vector = torch.stack(output_vectors, -1).sum(dim=-1)
-        # output_vector = torch.cat(output_vectors, 1)
+        # output_vector = torch.stack(output_vectors, -1).sum(dim=-1)
+        output_vector = torch.cat(output_vectors, 1)
         return output_vector
     
     def forward(self, input_ids, attention_mask):
@@ -135,7 +137,7 @@ class BERTFinetune(pl.LightningModule):
         function and measures the model performance accross the entire validation set.
         
         Returns:
-            - Dictionary with metrics to be added to the lightning logger.  
+            - Dictionary with metrics to be added to the lightning Qger.  
         """
         outputs = self.val_outputs
         labels = torch.cat([x['labels'] for x in outputs])
@@ -189,7 +191,7 @@ class BERTFinetune(pl.LightningModule):
     def add_model_specific_args(cls, parser):
         parser.add_argument(
             "--model_name",
-            default="facebook/esm2_t6_8M_UR50D",
+            default="facebook/esm2_t33_650M_UR50D",
             type=str,
             help="Maximum sequence length.",
         )
@@ -200,14 +202,20 @@ class BERTFinetune(pl.LightningModule):
             help="Maximum sequence length.",
         )
         parser.add_argument(
+            "--cls_bottleneck",
+            default=512,
+            type=int,
+            help="Rank of cls matrix",
+        )
+        parser.add_argument(
             "--encoder_learning_rate",
-            default=5e-06,
+            default=1e-05,
             type=float,
             help="Encoder specific learning rate.",
         )
         parser.add_argument(
             "--learning_rate",
-            default=3e-05,
+            default=9e-05,
             type=float,
             help="Classification head learning rate.",
         )

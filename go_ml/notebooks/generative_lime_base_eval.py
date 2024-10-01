@@ -22,14 +22,13 @@ def mask_seq(seq_ind, attention_mask, mask_token, residue_coverage=6, mut_per=0.
     batch[batch_inds, mut_inds] = mask_token
     return batch, batch_inds, mut_inds
 
-tokenizer = transformers.AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
+tokenizer = AutoTokenizer.from_pretrained('facebook/esm2_t6_8M_UR50D')
+config = AutoConfig.from_pretrained('facebook/esm2_t6_8M_UR50D')
+model = AutoModelForMaskedLM.from_pretrained('facebook/esm2_t6_8M_UR50D').to(device)
+model.eval()
+
 enzyme_df = get_enzyme_df()
 enzyme_l = list(enzyme_iterator(enzyme_df, tokenizer))
-
-tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
-config = AutoConfig.from_pretrained("facebook/esm2_t33_650M_UR50D")
-model = AutoModelForMaskedLM.from_pretrained("facebook/esm2_t33_650M_UR50D").to(device)
-model.eval()
 
 import tqdm
 with torch.no_grad():
@@ -54,5 +53,5 @@ with torch.no_grad():
             pbar.update()
 
 import pickle
-with open('/home/andrew/GO_interp/go_ml/notebooks/notebook_cache/test_100_bert_distr.pkl', 'wb') as f:
+with open('/home/andrew/GO_interp/go_ml/notebooks/notebook_cache/test_100_mini_bert_distr.pkl', 'wb') as f:
     pickle.dump(bert_distr_l, f)

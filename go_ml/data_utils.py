@@ -37,6 +37,22 @@ def read_sparse(fn, prot_rows, GO_cols):
             sparse_probs[prm[prot], tcm[go_id]] = prob
     return csr_matrix(sparse_probs)
 
+class ProtDataset(data.Dataset):
+    def __init__(self, prot_ids, sequences, prot_data=None):
+        self.prot_ids = prot_ids
+        self.sequences = sequences #A list of strings representing proteins
+        if(prot_data is None):
+            prot_data = [{} for _ in range(len(prot_ids))]
+        self.prot_data = prot_data #A list of dictionaries representing data
+
+    def __len__(self):
+        return len(self.prot_ids)
+    
+    def __getitem__(self, index):
+        dp = {"prot_id": self.prot_ids[index], "seq": self.sequences[index]}
+        dp.update(self.prot_data[index])
+        return dp
+
 class SequenceDataset(data.Dataset):
     def __init__(self, prot_ids, go_terms, sequences, labels, mini=None):
         self.prot_ids = prot_ids
@@ -130,7 +146,6 @@ def collate_dict(data_dict_l):
             dd[k] = [data_dict_l[i][k] for i in range(len(data_dict_l))]                 
     return dd
 
-
 # bert_tokenizer = BertTokenizer.from_pretrained("Rostlab/prot_bert_bfd", do_lower_case=False)
 def get_seq_collator(tokenizer, max_length=500, add_special_tokens=False):
     def seq_collator(data_dict_list):
@@ -141,7 +156,7 @@ def get_seq_collator(tokenizer, max_length=500, add_special_tokens=False):
                                                     truncation=True,
                                                     return_attention_mask=True,
                                                     max_length=max_length)
-        sample['seq'] = torch.tensor(inputs['input_ids'])
+        sample['seq_ind'] = torch.tensor(inputs['input_ids'])
         sample['mask'] = torch.BoolTensor(inputs['attention_mask'])
         return sample
     return seq_collator
