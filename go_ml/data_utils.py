@@ -152,7 +152,7 @@ def get_seq_collator(tokenizer, max_length=500, add_special_tokens=False):
         sample = collate_dict(data_dict_list)
         inputs = tokenizer.batch_encode_plus(sample["seq"],
                                                     add_special_tokens=add_special_tokens,
-                                                    padding='max_length',
+                                                    padding='longest',
                                                     truncation=True,
                                                     return_attention_mask=True,
                                                     max_length=max_length)

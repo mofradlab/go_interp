@@ -1,0 +1,21 @@
+Models: ESM2, ESM3, MSA Baseline
+Datasets: CSA, Interpro Domains
+
+Eval: Mean-Reciprocal Rank, Mean-percentage Rank, Mean AUC
+
+Goals
+- Semi-supervised prediction of residues critical to protein function
+    - ESM2/ESM3 BERT Entropy
+    - MSA Entropy
+    - ESM3 conditional entropy
+    - ESM3 conditional difference
+    - GO classifier interpretation
+        - Integrated gradients
+        - LIME
+        - Generative LIME
+    - Joint GO model interpretation
+        - Conditional difference
+        - Generative LIME
+- Interpretable models of residue-function relationship
+    - Linear, pairwise, HMM, motif/convolutional, disordered neighborhood
+- 

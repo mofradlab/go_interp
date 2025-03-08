@@ -4,21 +4,17 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
-from go_ml.models.bert_finetune import BERTFinetune
+from go_ml.models.esm_finetune import ESMFinetune
 from go_ml.data_utils import *
 from argparse import ArgumentParser
 import transformers
 
 parser = ArgumentParser()
-parser = BERTFinetune.add_model_specific_args(parser)
-# parser = pl.Trainer.add_argparse_args(parser)
+parser = ESMFinetune.add_model_specific_args(parser)
 hparams = parser.parse_args()
 print("got hparams", hparams)
 
 if __name__ == "__main__":
-    # train_dataset = BertSeqDataset.from_dgp_pickle("../dgp_data/data/terms.pkl", "../dgp_data/data/train_data.pkl")
-    # val_dataset = BertSeqDataset.from_dgp_pickle("../dgp_data/data/terms.pkl", "../dgp_data/data/test_data.pkl")
-    
     train_path = "/home/andrew/cafa5_team/data/"
     with open(f"{train_path}/cafa_dataset/go_terms.json", "r") as f:
         go_terms = json.load(f)
@@ -28,8 +24,6 @@ if __name__ == "__main__":
         labels = pickle.load(f)
     print((np.asarray(labels.sum(axis=1)) > 0).sum() / labels.shape[0])
     prot_sequences, seq_ids = load_protein_sequences(f"{train_path}/uniprot_sprot.fasta")
-    # print(len(seq_ids), seq_ids[:100])
-    # seq_ids = [s.split("|")[1] for s in seq_ids]
     assert all(s1 == s2 for s1, s2 in zip(prot_ids, seq_ids))
     labeled_id = (np.asarray(labels.sum(axis=1)) > 0).flatten()
     
@@ -48,16 +42,16 @@ if __name__ == "__main__":
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(hparams.model_name)
     collate_seqs = get_seq_collator(tokenizer, max_length=hparams.max_length, add_special_tokens=True)
-    dataloader_params = {"shuffle": True, "batch_size": 4, "collate_fn":collate_seqs}
-    val_dataloader_params = {"shuffle": False, "batch_size": 8, "collate_fn":collate_seqs}
+    dataloader_params = {"shuffle": True, "batch_size": 6, "collate_fn":collate_seqs}
+    val_dataloader_params = {"shuffle": False, "batch_size": 12, "collate_fn":collate_seqs}
 
-    train_loader = DataLoader(train_dataset, **dataloader_params, num_workers=6)
+    train_loader = DataLoader(train_dataset, **dataloader_params)
     val_loader = DataLoader(val_dataset, **val_dataloader_params)
 
     hparams.num_classes = train_dataset[0]['labels'].shape[0]
     hparams.num_train_steps = 10*len(train_dataset)
-    # hparams.encoder_features = 320
-    model = BERTFinetune(hparams)
+
+    model = ESMFinetune(hparams)
     
     early_stop_callback = EarlyStopping(monitor='F1/val', min_delta=0.00, patience=3, verbose=True, mode='max')
     checkpoint_callback = ModelCheckpoint(filename="/home/andrew/GO_interp/checkpoints/esm_finetune", 

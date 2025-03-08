@@ -10,6 +10,22 @@ build/
 cdhit/
 go_ml/.ipynb_checkpoints/
 go_ml/notebooks/.ipynb_checkpoints/
+go_ml/notebooks/notebook_cache/
+go_ml/notebooks/.ipynb_checkpoints/
+go_ml/esm3/.ipynb_checkpoints/
+go_ml/logs/
+hm_msa/
+output.png
+test.fasta
+muscle
+go_ml/eval_notebooks/.ipynb_checkpoints/
+go_ml/eval_notebooks/interpro_cases/
+go_ml/eval_notebooks/*.pkl
+go_ml/presentation/figures/
+go_ml/presentation/*.pkl
+go_ml/dataset_eval/eval_logits/
+go_ml/eval_notebooks/*.pkl
+go_ml/eval_notebooks/lip_mutation_scan/
 
 
 
@@ -33,5 +49,3 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
-
-

@@ -149,16 +149,14 @@ class BERTFinetune(pl.LightningModule):
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """
         parameters = [
-            {"params": self.classification_head.parameters()},
-            {
-                "params": self.model.parameters(),
-                "lr": self.h.encoder_learning_rate,
-            },
+            {"params": self.classification_head.parameters(), "lr": self.h.learning_rate},
+            {"params": self.model.parameters(), "lr": self.h.encoder_learning_rate},
         ]
         optimizer = optim.Adam(parameters, lr=self.h.learning_rate, weight_decay=self.h.weight_decay)
 
         scheduler_config = dict(
             scheduler_name="cosine_restarts",
+            first_cycle_steps=int(self.h.num_train_steps * scheduler_config["first_cycle_steps_ratio"]), 
             first_cycle_steps_ratio=0.5,
             cycle_mult=1.0,
             max_lr=2e-5,
@@ -167,14 +165,8 @@ class BERTFinetune(pl.LightningModule):
             gamma=0.8,
         )
         lr_scheduler = CosineAnnealingWarmupRestarts(
-            optimizer,
-            first_cycle_steps=int(self.h.num_train_steps * scheduler_config["first_cycle_steps_ratio"]),
-            cycle_mult=scheduler_config["cycle_mult"],
-            max_lr=scheduler_config["max_lr"],
-            min_lr=scheduler_config["min_lr"],
-            warmup_steps=scheduler_config["warmup_steps"],
-            gamma=scheduler_config["gamma"],
-        )
+            optimizer, **scheduler_config)
+        
         self.scheduler = lr_scheduler
         lr_scheduler_config = {
             "scheduler": lr_scheduler,
@@ -193,7 +185,7 @@ class BERTFinetune(pl.LightningModule):
             "--model_name",
             default="facebook/esm2_t33_650M_UR50D",
             type=str,
-            help="Maximum sequence length.",
+            help="Model name",
         )
         parser.add_argument(
             "--max_length",
