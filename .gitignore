@@ -1,74 +1,29 @@
-checkpoints/
-data/
-go_ml.egg-info/
-go_ml/notebooks/notebook_cache/
-*/logs/
-logs/
-/scripts/.ipynb_checkpoints/
-/notebooks/.ipynb_checkpoints/
-build/
-cdhit/
-go_ml/.ipynb_checkpoints/
-go_ml/notebooks/.ipynb_checkpoints/
-go_ml/notebooks/notebook_cache/
-go_ml/notebooks/.ipynb_checkpoints/
-# Ignore checkpoint files
-*.ipynb_checkpoints
-*/__pycache__/
-alt_models/
+# Large data files
+data/goa_uniprot_all.gaf
+data/goa_uniprot_all.gpa.gz
+data/processed_gaf.csv
+data/gaf.parquet
+data/train_esm_datasets/
+data/uniprotkb_2024_12_16.fasta
+
+# Precomputed eval outputs (large binary files)
+go_ml/dataset_eval/eval_files/**/*.pkl
+
+# Model checkpoints
+checkpoints/*.ckpt
+archive/
+
+# MSA data
 go_ml/msa_benchmark/uniref_msa/
 go_ml/msa_benchmark/uniref_data/
-# Ignore anything not a python or ipynb file in the msa_benchmark directory
-go_ml/msa_benchmark/*.m8
 go_ml/msa_benchmark/query_db/
 go_ml/msa_benchmark/results_db/
 go_ml/msa_benchmark/tmp/
 
-go_ml/model_notebooks/*.pkl
-
-go_ml/scripts/msa_old/
-go_ml/scripts/old_scripts/
-
-
-go_ml/notebooks/interp_old/
-go_ml/scripts/old_scripts/
-
-go_ml/dataset_eval/dataset_eval_old/
-go_ml/dataset_eval/eval_files/
-
-go_ml/logs/
-output.png
-test.fasta
-muscle
-go_ml/eval_notebooks/.ipynb_checkpoints/
-go_ml/eval_notebooks/interpro_cases/
-go_ml/eval_notebooks/*.pkl
-go_ml/presentation/figures/
-go_ml/presentation/*.pkl
-go_ml/dataset_eval/eval_logits/
-go_ml/eval_notebooks/*.pkl
-go_ml/eval_notebooks/lip_mutation_scan/
-go_ml/gen_datasets/downloads/
-go_ml/gen_datasets/datasets/
-go_ml/dataset_eval/eval_files/
-
+# Python artifacts
 __pycache__/
 *.py[cod]
-
-# C extensions
-*.so
-
-# Distribution / packaging
-bin/
-build/
-develop-eggs/
-dist/
-eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
 *.egg-info/
-.installed.cfg
-*.egg
+build/
+dist/
+.ipynb_checkpoints/

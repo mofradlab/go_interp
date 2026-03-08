@@ -1,9 +1,0 @@
-model_args: !!python/object:argparse.Namespace
-  freeze_encoder: true
-  gradient_checkpointing: false
-  gradient_clipping: 1.0
-  learning_rate: 1.5e-05
-  max_length: 1024
-  model_name: Synthyra/ESMplusplus_small
-  num_train_steps: 19600
-  weight_decay: 0.01

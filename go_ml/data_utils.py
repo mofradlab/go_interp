@@ -1,3 +1,34 @@
+"""
+data_utils.py — Dataset classes, tokenization, and masking for training.
+
+Dataset classes
+---------------
+  ProtFuncDataset     — protein sequences with sparse GO label vectors
+  BertFuncDataset     — wraps ProtFuncDataset, applies a masking function
+                        at item-fetch time for masked language modeling
+  SequenceDataset     — sequences without functional labels (for inference)
+  BertSeqDataset      — masked version of SequenceDataset
+
+Masking strategies (applied per-sequence during training)
+-----------------------------------------------------------
+  bert_mask                  — random 15% token masking (standard BERT)
+  bert_span_mask             — contiguous span masking
+  bert_span_mask_parametrized — span masking with configurable context window
+                                and span length (used for all paper models)
+
+Key utilities
+-------------
+  gen_annot_mat       — build (N, L) annotation matrix from index lists
+  prot_func_collate_bert — collate function for DataLoader (handles padding)
+
+Label format
+------------
+  Labels are scipy sparse matrices with shape (N, n_go_terms). Each row is
+  a binary vector indicating which GO terms are associated with that protein.
+  Only GO terms with ≥ 50 occurrences in the training set are used during
+  training (adaptive filtering applied inside FuncCondESMCFinetune).
+"""
+
 import gzip, json, os, pickle
 from collections import Counter
 import numpy as np
@@ -178,8 +209,6 @@ def bert_mask(seq_ind, attention_mask, mask_token_id, rand_token_id, mask_prob=0
     masked_seq_ind[indices_random] = random_words
     return masked_seq_ind, labels
 
-
-
 def bert_span_mask(seq_ind, attention_mask, mask_token_id, rand_token_id, mask_prob=0.15):
     masked_seq_ind = seq_ind.clone()
     labels = seq_ind.clone()
@@ -223,6 +252,50 @@ def bert_span_mask(seq_ind, attention_mask, mask_token_id, rand_token_id, mask_p
 
 bert_mask_alias = lambda seq_ind, attention_mask: bert_mask(seq_ind, attention_mask, mask_token_id, aa_tokens, mask_prob=0.15)
 bert_span_mask_alias = lambda seq_ind, attention_mask: bert_span_mask(seq_ind, attention_mask, mask_token_id, aa_tokens, mask_prob=0.35)
+
+def bert_span_mask_parametrized(seq_ind, attention_mask, mask_token_id, rand_token_id, mask_prob=0.15, context_length=100, span_length=3):
+    masked_seq_ind = seq_ind.clone()
+    labels = seq_ind.clone()
+    special_tokens_mask = ~(attention_mask.bool())
+    special_tokens_mask[:, 0] = 1  # [CLS]
+    seq_lens = attention_mask.sum(dim=1) - 2
+
+    res_ind = torch.arange(seq_ind.shape[1]).unsqueeze(0).repeat(seq_ind.shape[0], 1)
+
+    max_len = seq_ind.shape[1] - 2
+    fill_total = max_len * mask_prob
+    num_spans = int(fill_total / (span_length+1)) # +1 for minimum gap
+    gap_total = max_len - (num_spans * (span_length+1)) # +1 for minimum gap
+
+    ind = torch.randint(0, gap_total, (seq_ind.shape[0], num_spans))
+    ind, _ = torch.sort(ind, dim=1)
+    ind = ind + torch.arange(0, int(num_spans)).reshape(1, -1) * (span_length + 1)
+
+    batch_ind = torch.arange(0, seq_ind.shape[0]).unsqueeze(1).repeat(1, int(num_spans))
+    span_starts = ind
+    span_runs = (span_starts.unsqueeze(2) + torch.arange(0, span_length).unsqueeze(0).unsqueeze(0)).flatten()
+    batch_ind_runs = batch_ind.unsqueeze(2).repeat(1, 1, span_length).flatten()
+
+    span_mask = torch.ones_like(seq_ind, dtype=torch.bool)
+    span_mask[batch_ind_runs.long(), span_runs.long()] = 0
+
+    context_start = torch.rand(seq_ind.shape[0]) * (seq_lens.float() - context_length)
+    context_start = torch.clamp(context_start, min=0).long() + 1
+    context_end = context_start + context_length
+
+    context_mask = res_ind >= context_start.unsqueeze(1)
+    context_mask = context_mask & (res_ind <= context_end.unsqueeze(1))
+
+    batch_mask = span_mask & context_mask
+
+    labels[batch_mask] = -100  # We only compute loss on masked tokens
+    labels[~context_mask] = -100  # We only compute loss on masked tokens inside major span
+    labels[special_tokens_mask] = -100  # Do not compute loss on special tokens
+
+    indices_replaced = ~batch_mask
+    masked_seq_ind[indices_replaced] = mask_token_id
+    return masked_seq_ind, labels
+
 
 #Inherit from ProtFuncDataset
 class BertFuncDataset(ProtFuncDataset):

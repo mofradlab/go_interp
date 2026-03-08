@@ -1,3 +1,28 @@
+"""
+eval_utils.py — Evaluation metrics and data utilities for residue-level prediction.
+
+All evaluation functions operate on padded matrix representations:
+  - score_mat  (N, L)      — per-residue scores (higher = more likely functional)
+  - seq_len_mask (N, L)    — True at valid (non-padded) positions
+  - annot_mat  (N, L)      — True at annotated functional residue positions
+
+Sequences are 1-indexed in these matrices (position 0 is unused / reserved for BOS).
+Maximum sequence length is 850 AA throughout.
+
+Public API (used in eval_models.ipynb and cond_bert_gen_esmc.py):
+  filter_annot_df     — load and validate a dataset CSV
+  gen_annot_mat       — build annotation matrix from AnnotatedIndices column
+  gen_seq_len_mask    — build sequence length mask from sequence strings
+  gen_bert_mat        — pack per-protein logit dicts into a padded matrix
+  get_bert_entropy    — per-position Shannon entropy from AA probability matrix
+  get_pssm_entropy    — per-position entropy from PSSM (MSA baseline)
+  mean_reciprocal_rank_mat — MRR: rank of the best-ranked annotated residue
+  mean_auc            — mean per-protein ROC AUC
+  bulk_auc            — single AUC pooling all residues across proteins
+  top_30_score        — fraction of annotated residues in top-30 predictions
+  roc_average         — interpolated mean ROC curve across proteins
+"""
+
 import torch
 import numpy as np
 from sklearn.metrics import roc_curve, auc, average_precision_score
@@ -90,6 +115,13 @@ def gen_seq_len_mask(sequences, max_len=850):
 
 import ast
 def filter_annot_df(annot_df, max_seq_len=850):
+    """Load and validate an evaluation dataset CSV.
+
+    Drops rows with missing values or sequences > max_seq_len. Parses
+    AnnotatedIndices and GOTerm from string representation. Removes proteins
+    where no annotated residues fall within the sequence, or where >75% of
+    all residues are annotated (likely a data artifact).
+    """
     annot_df = annot_df.dropna()
     annot_df = annot_df[annot_df['Sequence'].str.len() <= max_seq_len]
     annot_df['AnnotatedIndices'] = annot_df['AnnotatedIndices'].apply(ast.literal_eval)
@@ -115,6 +147,12 @@ def auc_score(token_attribution, token_attribution_mask, conserved_token_mat):
 
 from sklearn.metrics import f1_score, precision_recall_fscore_support
 def bulk_auc(token_attribution, token_attribution_mask, conserved_token_mat):
+    """Single ROC AUC pooling all residues across all proteins.
+
+    Flattens all valid residues into one binary classification problem
+    (annotated vs. non-annotated) and computes one AUC. Less sensitive to
+    per-protein variance than mean_auc; useful as a sanity check.
+    """
     mask = token_attribution_mask.flatten()
     labels = conserved_token_mat.flatten()[mask]
     preds = (token_attribution.flatten())[mask]
@@ -123,6 +161,12 @@ def bulk_auc(token_attribution, token_attribution_mask, conserved_token_mat):
     return roc_auc
 
 def top_30_score(token_attribution, token_attribution_mask, conserved_token_mat):
+    """Fraction of annotated residues recovered in the top-30 predictions.
+
+    For each protein, takes the top min(30, n_annotated) highest-scoring
+    residues and measures what fraction are annotated. Returns the mean
+    across proteins. Higher is better; range [0, 1].
+    """
     attribution_argsort = np.argsort(token_attribution - 1e5*(~token_attribution_mask), axis=1)[:, ::-1]
     top_conserve_stat = conserved_token_mat[np.arange(0, conserved_token_mat.shape[0]).reshape((-1, 1)), attribution_argsort]
     annot_counts = conserved_token_mat.sum(axis=1, keepdims=False)
@@ -146,6 +190,12 @@ def mean_reciprocal_rank(token_attribution, token_attribution_mask, conserved_to
     return ttr / tct
 
 def mean_reciprocal_rank_mat(token_attribution, token_attribution_mask, conserved_token_mat):
+    """Mean Reciprocal Rank (MRR) of annotated residues.
+
+    For each protein, ranks all valid residues by score (descending) and
+    records the rank of the highest-ranked annotated residue. Returns the
+    mean of 1/rank across all proteins. Higher is better; range (0, 1].
+    """
     attribution_argsort = np.argsort(token_attribution - 1e5*(~token_attribution_mask), axis=1)[:, ::-1]
     attribution_ranks = np.argsort(attribution_argsort, axis=1)
 
@@ -215,6 +265,13 @@ def mean_average_precision(token_attribution: np.ndarray, seq_len: np.ndarray, c
     return ap_l.mean()
 
 def mean_auc(token_attribution: np.ndarray, token_attribution_mask: np.ndarray, conserved_tokens, return_roc=False):
+    """Mean per-protein ROC AUC for annotated-residue prediction.
+
+    Computes a per-protein binary classification ROC AUC (annotated vs.
+    non-annotated residues) and returns the mean. Proteins with no annotated
+    residues are skipped. If return_roc=True, also returns (fpr_list, tpr_list,
+    auc_list) for plotting.
+    """
     token_labels = np.zeros_like(token_attribution)
     for r in range(len(conserved_tokens)):
         token_labels[r, conserved_tokens[r]] = 1

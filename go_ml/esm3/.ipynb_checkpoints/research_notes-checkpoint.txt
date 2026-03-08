@@ -1,8 +1,0 @@
-- Check functional annotation of CSA sequence
-- Combine functional annotation with PSSM importance
-- Check functional annotation over a range of mutations
-
-- Force generation of sequence with and without function
-- Gibbs sampling of sequences in conjunction with function
-    - Weight by proximity to base sequence? 
-    - Condition on high similarity to base sequence
