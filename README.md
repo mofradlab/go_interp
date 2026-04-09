@@ -11,7 +11,7 @@ and functionally constrained. This work tests whether explicitly conditioning a 
 on a protein's Gene Ontology (GO) functional annotations sharpens residue-level
 predictions at known functional sites (active sites, binding sites, motifs, domains).
 
-**Model:** `FuncCondESMC` extends ESM Cambrian (ESMC 300M) with a learned embedding
+**Model:** `FuncCondESMC` extends ESM Cambrian with a learned embedding
 for each GO term. These embeddings are projected into the token embedding space and
 added before the transformer encoder, conditioning all attention layers on the
 protein's annotated function.
@@ -89,7 +89,7 @@ pip install esm
 The training data pickles (`data/train_esm_datasets/`) and large GO annotation files
 (`data/goa_uniprot_all.gaf`, `data/processed_gaf.csv`) are not tracked in git due to
 size. Contact the authors for access, or rebuild from scratch using
-`go_ml/gen_datasets/dataset_gobench.ipynb` 
+`go_ml/gen_datasets/` notebooks. 
 
 Evaluation datasets are small CSVs in `go_ml/dataset_eval/datasets/` and are tracked
 in git. See `go_ml/gen_datasets/README.md` for construction details.
