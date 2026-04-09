@@ -1,0 +1,27 @@
+Comments to the Author
+This manuscript addresses a relevant and challenging problem in computational biology: inferring mechanistically meaningful, residue-level functional annotations from protein sequences when only global functional labels are available. The idea of framing this task as a semi-supervised learning problem and the effort to construct unified evaluation datasets linking Gene Ontology terms to annotated residues are strengths of the work.
+However, several substantive issues must be addressed before the conclusions can be fully supported.
+Major:
+
+1. Test new training run, compare with previous
+
+
+1. The provided GitHub repository contains the scripts used in the study but lacks sufficient documentation or instructions describing how to run the code or reproduce the results. Clear guidance on model usage, dependencies, and execution pipelines is necessary to ensure reproducibility.
+
+
+2. The description of the curated benchmark datasets in Section 2.1 (“Benchmark Datasets”) is unclear.
+
+
+3. In Section 2.2 (“Sequence Resources and GO Annotations”), the manuscript describes an 85–15 train–validation split, but it is unclear what data are used for testing. The authors should explicitly define the test set and clarify how performance is evaluated on held-out data.
+
+
+4. For PSSM construction using MMseqs, the manuscript does not provide sufficient methodological detail, such as sequence filtering criteria and similarity thresholds. These details are essential for reproducibility and fair comparison.
+
+5. In Section 2.6 (“Context Span Masking Objective”), fine-tuning is performed for only five epochs. The rationale for this choice is not explained, and it is unclear whether longer training was explored or whether the model converges reliably within this limited number of epochs.
+
+6. In the Results section, several conclusions are stated without clear reference to supporting quantitative evidence. For example, in Section 3.3.1, the claim that entropy-based residue scoring is most effective for the CSA and BioLiP datasets is not clearly linked to a specific figure or table. 
+The authors should explicitly indicate where the supporting data, as well as supporting materials (e.g., Figures S1–S2 and Tables S1–S2) can be found or provide additional figures or tables to substantiate these conclusions.
+
+Minor:
+1. In Section 2.8 (“Interpretability Methods”), the four interpretability approaches are not explicitly named in Table 3. Including the corresponding method names directly in the table would greatly improve clarity and help readers interpret the reported results.
+2. In Table 2, the best-performing method(s) are not visually highlighted (e.g., by bolding), making it difficult to quickly identify the strongest results across metrics.
